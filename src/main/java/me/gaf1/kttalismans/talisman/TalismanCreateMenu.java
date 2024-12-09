@@ -1,9 +1,10 @@
-package me.gaf1.kttalismans.talisman.createmenu;
+package me.gaf1.kttalismans.talisman;
 
 import lombok.Getter;
 import lombok.Setter;
 import me.gaf1.kttalismans.Plugin;
 import me.gaf1.kttalismans.utils.ConfigManager;
+import org.bukkit.Effect;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -11,7 +12,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.item.ItemProvider;
@@ -30,15 +33,17 @@ import java.util.List;
 import java.util.Map;
 
 
-public class MainMenu {
+public class TalismanCreateMenu {
     Player player;
     String id;
     private String name = "&eТалисман";
     private List<String> lore = new ArrayList<>(List.of("§7Новая строка"));
     private Boolean glow = false;
     private final List<AttributeTalisman> attributeList = new ArrayList<>();
+    private final List<PotionEffect> effects = new ArrayList<>();
+    private final TalismanManager tManager = new TalismanManager();
 
-    public MainMenu(Player player, String id) {
+    public TalismanCreateMenu(Player player, String id) {
         this.player = player;
         this.id = id;
     }
@@ -103,12 +108,23 @@ public class MainMenu {
         gui.setItem(3, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
-                return new ItemBuilder(Material.DIAMOND_SWORD).setDisplayName("§fАтрибуты");
+                return new ItemBuilder(Material.DIAMOND_SWORD).addAllItemFlags().setDisplayName("§fАтрибуты");
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
                 openAttributeWindow();
+            }
+        });
+        gui.setItem(4, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                return new ItemBuilder(Material.POTION).addAllItemFlags().setDisplayName("§fЭффекты");
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                openEffectsWindow();
             }
         });
 
@@ -121,18 +137,33 @@ public class MainMenu {
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
                 YamlConfiguration talismanCfg = ConfigManager.instance.configs.get("talismans.yml");
+                talismanCfg.set(id+".attributes.1",null);
+                talismanCfg.set(id+".effects",null);
                 for (int i = 0;i<lore.size();i++){
                     lore.set(i,lore.get(i).replace("§","&"));
                 }
                 talismanCfg.set(id+".name",name.replace("§","&"));
                 talismanCfg.set(id+".lore",lore);
                 talismanCfg.set(id+".glow",glow);
+                for (int i = 0;i<effects.size();i++){
+                    String type = null;
+
+                    for (Map.Entry<String, Integer> entry : tManager.getMapEffects().entrySet()) {
+                        if (entry.getValue().equals(effects.get(i).getType().getId())) {
+                            type = entry.getKey();
+                        }
+                    }
+
+                    talismanCfg.set(id+".effects."+type.toUpperCase(), effects.get(i).getAmplifier());
+                }
                 for (int i = 0;i<attributeList.size();i++){
                     talismanCfg.set(id+".attributes."+i+".type", String.valueOf(attributeList.get(i).getType()));
                     talismanCfg.set(id+".attributes."+i+".operation",String.valueOf(attributeList.get(i).getOperation()));
-                    talismanCfg.set(id+".attributes."+i+".amount",String.valueOf(attributeList.get(i).getAmount()));
-                    talismanCfg.set(id+".attributes."+i+".slot",String.valueOf(attributeList.get(i).getSlot()));
+                    talismanCfg.set(id+".attributes."+i+".amount",attributeList.get(i).getAmount());
                 }
+
+
+
                 try {
                     talismanCfg.save(new File(Plugin.getInstance().getDataFolder().getAbsolutePath() + "/talismans.yml"));
                 } catch (IOException e) {
@@ -212,19 +243,25 @@ public class MainMenu {
             return;
         }
 
-        // Добавляем элемент в GUI
-        String text = lore.get(slot); // Получаем строку
+        String text = lore.get(slot);
         gui.setItem(slot, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
                 return new ItemBuilder(Material.PAPER)
                         .setDisplayName("§7" + (slot + 1) + " строка")
-                        .addLoreLines(text);
+                        .addLoreLines(text,"","§7Зажмите шифт и нажмите лкм","§7Чтобы удалить строку");
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                openLoreAnvilWindow(slot);
+                if (clickType == ClickType.SHIFT_LEFT){
+                    gui.remove(slot);
+                    lore.remove(slot);
+                    openLoreMenu();
+                }
+                else {
+                    openLoreAnvilWindow(slot);
+                }
             }
         });
     }
@@ -236,19 +273,26 @@ public class MainMenu {
             return;
         }
 
-        String text = lore.get(slot); // Получаем строку напрямую
+        String text = lore.get(slot);
         gui.setItem(slot, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
                 return new ItemBuilder(Material.PAPER)
-                        .setDisplayName("§7" + (slot + 1) + " строка") // Человекочитаемый номер строки
-                        .addLoreLines(text); // Добавляем содержимое строки
+                        .setDisplayName("§7" + (slot + 1) + " строка")
+                        .addLoreLines(text,"","§7Зажмите шифт и нажмите лкм","§7Чтобы удалить строку");
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                player.closeInventory();
-                openLoreAnvilWindow(slot); // Передаём индекс строки для редактирования
+                if (clickType == ClickType.SHIFT_LEFT){
+                    gui.remove(slot);
+                    lore.remove(slot);
+                    openLoreMenu();
+                }
+                else {
+                    player.closeInventory();
+                    openLoreAnvilWindow(slot);
+                }
             }
         });
     }
@@ -317,12 +361,19 @@ public class MainMenu {
             gui.setItem(finalI, new AbstractItem() {
                 @Override
                 public ItemProvider getItemProvider() {
-                    return new ItemBuilder(Material.PAPER).setDisplayName("§f"+(finalI +1)+" атрибут");
+                    return new ItemBuilder(Material.PAPER).setDisplayName("§f"+(finalI +1)+" атрибут")
+                            .addLoreLines("§7Зажмите шифт и нажмите лкм","§7Чтобы удалить атрибут");
                 }
 
                 @Override
                 public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                    editAttributeWindow(finalI);
+                    if (clickType == ClickType.SHIFT_LEFT){
+                        gui.remove(finalI);
+                        attributeList.remove(finalI);
+                        openAttributeWindow();
+                    } else {
+                        editAttributeWindow(finalI);
+                    }
                 }
             });
         }
@@ -332,12 +383,20 @@ public class MainMenu {
         gui.setItem(i, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
-                return new ItemBuilder(Material.PAPER).setDisplayName("§f" + attributeList.size() + " атрибут");
+                return new ItemBuilder(Material.PAPER).setDisplayName("§f" + attributeList.size() + " атрибут")
+                        .addLoreLines("§7Зажмите шифт и нажмите лкм","§7Чтобы удалить атрибут");
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                editAttributeWindow(i);  // передаем индекс последнего атрибута
+                if (clickType == ClickType.SHIFT_LEFT){
+                    gui.remove(i);
+                    attributeList.remove(i);
+                    openAttributeWindow();
+                }
+                else {
+                    editAttributeWindow(i);
+                }
             }
         });
     }
@@ -374,11 +433,10 @@ public class MainMenu {
                 else if (clickType == ClickType.LEFT){
                     i--;
                 }
-                // Проверяем, чтобы индекс оставался в пределах допустимых значений
                 if (i >= list.size()) {
-                    i = 0; // если индекс превышает максимальный, сбрасываем его на 0
+                    i = 0;
                 } else if (i < 0) {
-                    i = list.size() - 1; // если индекс меньше 0, устанавливаем его на последний элемент
+                    i = list.size() - 1;
                 }
                 notifyWindows();
                 attributeList.get(value).setType(list.get(i));
@@ -413,11 +471,10 @@ public class MainMenu {
                 else if (clickType == ClickType.LEFT){
                     i--;
                 }
-                // Проверяем, чтобы индекс оставался в пределах допустимых значений
                 if (i >= operations.size()) {
-                    i = 0; // если индекс превышает максимальный, сбрасываем его на 0
+                    i = 0;
                 } else if (i < 0) {
-                    i = operations.size() - 1; // если индекс меньше 0, устанавливаем его на последний элемент
+                    i = operations.size() - 1;
                 }
                 notifyWindows();
                 attributeList.get(value).setOperation(operations.get(i));
@@ -455,47 +512,7 @@ public class MainMenu {
                 attributeList.get(value).setAmount(Double.parseDouble(df.format(i)));
             }
         });
-        gui.setItem(3, new AbstractItem() {
 
-            List<EquipmentSlot> slots = List.of(EquipmentSlot.values());
-            private int i = 0;
-            boolean click = false;
-
-
-            @Override
-            public ItemProvider getItemProvider() {
-                if (click) {
-                    return new ItemBuilder(Material.BIRCH_SIGN)
-                            .setDisplayName("§fСлот")
-                            .addLoreLines(String.valueOf(slots.get(i)));
-                }
-                else {
-
-                    return new ItemBuilder(Material.BIRCH_SIGN)
-                            .setDisplayName("§fСлот")
-                            .addLoreLines(String.valueOf(attributeList.get(value).getSlot()));
-                }
-            }
-
-            @Override
-            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                click = true;
-                if (clickType == ClickType.RIGHT){
-                    i++;
-                }
-                else if (clickType == ClickType.LEFT){
-                    i--;
-                }
-                // Проверяем, чтобы индекс оставался в пределах допустимых значений
-                if (i >= slots.size()) {
-                    i = 0; // если индекс превышает максимальный, сбрасываем его на 0
-                } else if (i < 0) {
-                    i = slots.size() - 1; // если индекс меньше 0, устанавливаем его на последний элемент
-                }
-                notifyWindows();
-                attributeList.get(value).setSlot(slots.get(i));
-            }
-        });
 
         gui.setItem(17, new AbstractItem() {
             @Override
@@ -512,6 +529,205 @@ public class MainMenu {
         return gui;
     }
 
+    public void openEffectsWindow(){
+        Window.single().setGui(getEffectsGui()).setViewer(player).build().open();
+    }
+    public Gui getEffectsGui(){
+        Gui gui = Gui.empty(9,3);
+
+        gui.setItem(21, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                return new ItemBuilder(Material.LIME_DYE).setDisplayName("§aДобавить эффект");
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                addEffectSlot(gui);
+            }
+        });
+
+        gui.setItem(23, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                return new ItemBuilder(Material.LIME_CONCRETE).setDisplayName("§aСохранить");
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                openMain();
+            }
+        });
+        fillEffects(gui);
+
+        return gui;
+    }
+    public void fillEffects(Gui gui){
+        for (int i = 0;i<effects.size();i++) {
+            int finalI = i;
+            gui.setItem(i, new AbstractItem() {
+                @Override
+            public ItemProvider getItemProvider() {
+                    String type = null;
+
+                    for (Map.Entry<String, Integer> entry : tManager.getMapEffects().entrySet()) {
+                        if (entry.getValue().equals(effects.get(finalI).getType().getId())) {
+                            type = entry.getKey();
+                        }
+                    }
+
+                return new ItemBuilder(Material.PAPER).setDisplayName("§f"+(finalI+1)+" Эффект")
+                        .addLoreLines(type.toUpperCase()+" "+String.valueOf(effects.get(finalI).getAmplifier())
+                                ," "
+                                ,"§7Зажмите шифт и нажмите лкм"
+                                ,"§7Чтобы удалить эффект");
+            }
+
+                @Override
+                public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+
+                    if (clickType == ClickType.SHIFT_LEFT){
+                        gui.remove(finalI);
+                        effects.remove(finalI);
+                        openEffectsWindow();
+                    }
+                    else {
+                        editEffectSlotWindow(finalI);
+                    }
+                }
+            });
+        }
+    }
+
+    public void addEffectSlot(Gui gui){
+        effects.add(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,Integer.MAX_VALUE,1));
+        int i = effects.size();
+        gui.setItem(i-1,new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                String type = null;
+
+                for (Map.Entry<String, Integer> entry : tManager.getMapEffects().entrySet()) {
+                    if (entry.getValue().equals(effects.get(i-1).getType().getId())) {
+                        type = entry.getKey();
+                    }
+                }
+
+                return new ItemBuilder(Material.PAPER).setDisplayName("§f"+i+" Эффект")
+                        .addLoreLines(type.toUpperCase()+" "+String.valueOf(effects.get(i-1).getAmplifier())
+                                ," "
+                                ,"§7Зажмите шифт и нажмите лкм"
+                                ,"§7Чтобы удалить эффект");
+            }
+
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+
+                if (clickType == ClickType.SHIFT_LEFT){
+                    gui.remove(i-1);
+                    effects.remove(i-1);
+                    openEffectsWindow();
+                }
+                else {
+                    editEffectSlotWindow(i-1);
+                }
+            }
+        });
+    }
+    public void editEffectSlotWindow(Integer value){
+        Window.single().setGui(getEditEffectGui(value)).setViewer(player).build().open();
+    }
+    public Gui getEditEffectGui(Integer value){
+        Gui gui = Gui.empty(9,2);
+        gui.setItem(0, new AbstractItem() {
+            final List<String> effectKeys = new ArrayList<>(tManager.getMapEffects().keySet());
+            private int i = 0;
+            private Boolean click = false;
+            @Override
+            public ItemProvider getItemProvider() {
+
+                String type = null;
+
+                for (Map.Entry<String, Integer> entry : tManager.getMapEffects().entrySet()) {
+                    if (entry.getValue().equals(effects.get(value).getType().getId())) {
+                        type = entry.getKey();
+                    }
+                }
+
+                if (click) {
+                    return new ItemBuilder(Material.POTION).setDisplayName("§fЭффект").addAllItemFlags().addLoreLines(effectKeys.get(i).toUpperCase());
+                }
+                else {
+                    return new ItemBuilder(Material.POTION).setDisplayName("§fЭффект").addAllItemFlags().addLoreLines(type.toUpperCase());
+                }
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                click = true;
+                if (clickType == ClickType.RIGHT){
+                    i++;
+                }
+                else if (clickType == ClickType.LEFT){
+                    i--;
+                }
+                if (i >= effectKeys.size()) {
+                    i = 0;
+                }
+                else if (i < 0) {
+                    i = effectKeys.size() - 1;
+                }
+                notifyWindows();
+                effects.set(value, new PotionEffect(PotionEffectType.getById(tManager.getMapEffects().get(effectKeys.get(i))),Integer.MAX_VALUE,effects.get(value).getDuration()));
+            }
+        });
+
+        gui.setItem(1, new AbstractItem() {
+            private int i = 0;
+            private Boolean click = false;
+            @Override
+            public ItemProvider getItemProvider() {
+                if (click) {
+                    return new ItemBuilder(Material.POTION).setDisplayName("§fЗначение").addAllItemFlags().addLoreLines(String.valueOf(i));
+                }
+                else {
+                    return new ItemBuilder(Material.POTION).setDisplayName("§fЗначение").addAllItemFlags().addLoreLines(String.valueOf(effects.get(value).getAmplifier()));
+                }
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                click = true;
+                if (clickType == ClickType.LEFT){
+                    i++;
+                }
+                if (clickType == ClickType.RIGHT){
+                    i--;
+                }
+                if (i <= 0){
+                    i=1;
+                }
+                notifyWindows();
+                effects.set(value, new PotionEffect(effects.get(value).getType(),Integer.MAX_VALUE,i));
+            }
+        });
+
+        gui.setItem(17, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                return new ItemBuilder(Material.LIME_CONCRETE).setDisplayName("§aСохранить");
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                openEffectsWindow();
+            }
+        });
+
+        return gui;
+    }
+
     public class AttributeTalisman {
         @Getter
         @Setter
@@ -522,29 +738,12 @@ public class MainMenu {
         @Getter
         @Setter
         private double amount;
-        @Getter
-        @Setter
-        private EquipmentSlot slot;
 
         public AttributeTalisman() {
             this.type = Attribute.GENERIC_ATTACK_DAMAGE;
             this.operation = AttributeModifier.Operation.ADD_NUMBER;
             this.amount = 1.0;
-            this.slot = EquipmentSlot.OFF_HAND;
-        }
-        public AttributeTalisman(Attribute type, AttributeModifier.Operation operation, double amount, EquipmentSlot slot) {
-            this.type = type;
-            this.operation = operation;
-            this.amount = amount;
-            this.slot = slot;
-        }
-        public void setAttribute(Attribute type, AttributeModifier.Operation operation, double amount, EquipmentSlot slot) {
-            this.type = type;
-            this.operation = operation;
-            this.amount = amount;
-            this.slot = slot;
         }
     }
-
 
 }

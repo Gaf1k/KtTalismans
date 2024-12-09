@@ -1,0 +1,10 @@
+Messages:
+  error_command: "&cКоманда введена неверно!"
+  not_enough_perm: "&cУ тебя нет прав!"
+  reload_config: "&aКонфиг успешно перезагружен!"
+  talisman_created: "&aТалисман успешно создан!"
+  talisman_not_exist: "&cТалисман с таким айди не существует!"
+  talisman_exist: "&cТалисман с таким айди уже существует!"
+  talisman_active: "&aАктивен"
+  talisman_destroyed: "&cСломан"
+  talisman_deleted: "&aТалисман успешно удалён!"

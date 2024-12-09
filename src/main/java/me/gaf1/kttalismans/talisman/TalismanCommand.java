@@ -1,2 +1,116 @@
-package me.gaf1.kttalismans.talisman;public class TalismanCommand {
+package me.gaf1.kttalismans.talisman;
+
+import me.gaf1.kttalismans.Plugin;
+import me.gaf1.kttalismans.utils.ChatUtil;
+import me.gaf1.kttalismans.utils.ConfigManager;
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabExecutor;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class TalismanCommand implements TabExecutor {
+    private final TalismanManager tManager = new TalismanManager();
+    private final YamlConfiguration talismanCfg = ConfigManager.instance.configs.get("talismans.yml");
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
+        if (!sender.hasPermission("kttalisman.admin")){
+            ChatUtil.sendConfigMessage(sender,"Messages.not_enough_perm");
+            return true;
+        }
+        if (args.length == 0){
+            ChatUtil.sendConfigMessage(sender,"Messages.error_command");
+            return true;
+        }
+        String args0 = args[0].toLowerCase();
+        switch (args0){
+            case "create":
+                if (args.length == 1) {
+                    ChatUtil.sendMessage(sender,"&f/talisman create <id>");
+                    return true;
+                }
+                if (talismanCfg.getKeys(false).contains(args[1])){
+                    ChatUtil.sendConfigMessage(sender,"Messages.talisman_exist");
+                    return true;
+                }
+                if (sender instanceof Player){
+                    Player player = (Player) sender;
+                    new TalismanCreateMenu(player, args[1]).openMain();
+                }
+
+                tManager.createTalisman(args[1],sender);
+                return true;
+            case "give":
+                if (args.length == 1) {
+                    ChatUtil.sendMessage(sender,"&f/talisman give <id>");
+                    return true;
+                }
+                if (!talismanCfg.getKeys(false).contains(args[1])){
+                    ChatUtil.sendConfigMessage(sender,"Messages.talisman_not_exist");
+                    return true;
+                }
+                if (!(sender instanceof Player)){
+                    Bukkit.getLogger().info("&cТы консоль! Тебе нельзя!");
+                    return true;
+                }
+                Player player = (Player) sender;
+                player.getInventory().addItem(tManager.getTalisman(args[1]));
+                return true;
+            case "remove":
+                if (args.length == 1) {
+                    ChatUtil.sendMessage(sender,"&f/talisman remove <id>");
+                    return true;
+                }
+                if (!talismanCfg.getKeys(false).contains(args[1])){
+                    ChatUtil.sendConfigMessage(sender,"Messages.talisman_not_exist");
+                    return true;
+                }
+                talismanCfg.set(args[1],null);
+                ChatUtil.sendConfigMessage(sender,"Messages.talisman_deleted");
+                try {
+                    talismanCfg.save(new File(Plugin.getInstance().getDataFolder().getAbsolutePath() + "/talismans.yml"));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                return true;
+            case "reload":
+                ConfigManager.instance.reloadConfigs();
+                Plugin.getInstance().reloadConfig();
+                ChatUtil.sendConfigMessage(sender,"Messages.reload_config");
+                return true;
+            default:
+                ChatUtil.sendConfigMessage(sender,"Messages.error_command");
+                return true;
+        }
+    }
+
+    @Override
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
+
+        if (!sender.hasPermission("kttalisman.admin")) {
+            return null;
+        }
+
+        if (args.length == 1){
+            return List.of("give", "create","remove");
+        }
+        else if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("remove"))){
+            List<String> list = new ArrayList<>();
+            for (String key: talismanCfg.getKeys(false)){
+                list.add(key);
+            }
+            return list;
+        }
+
+
+        return null;
+    }
 }

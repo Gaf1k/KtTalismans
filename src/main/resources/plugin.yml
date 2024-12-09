@@ -1,4 +1,7 @@
 name: KtTalismans
 version: '${project.version}'
-main: me.gaf1.kttalismans.KtTalismans
+main: me.gaf1.kttalismans.Plugin
 api-version: '1.16'
+
+commands:
+  talisman:
