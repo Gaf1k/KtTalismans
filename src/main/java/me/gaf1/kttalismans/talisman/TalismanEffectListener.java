@@ -1,19 +1,22 @@
 package me.gaf1.kttalismans.talisman;
 
+import me.gaf1.kttalismans.Plugin;
 import me.gaf1.kttalismans.utils.ChatUtil;
 import me.gaf1.kttalismans.utils.ConfigManager;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityResurrectEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -50,6 +53,11 @@ public class TalismanEffectListener implements Listener {
                     : null;
 
             if (!isTalisman || id == null) {
+                return;
+            }
+
+            String status = event.getOffHandItem().getItemMeta().getPersistentDataContainer().get(NamespacedKey.fromString("talisman_"+id),PersistentDataType.STRING);
+            if (status.equals("false")){
                 return;
             }
 
@@ -110,6 +118,12 @@ public class TalismanEffectListener implements Listener {
                                 .orElse(null);
 
                         if (id != null) {
+
+                            String status = hotbarItem.getItemMeta().getPersistentDataContainer().get(NamespacedKey.fromString("talisman_"+id),PersistentDataType.STRING);
+                            if (status.equals("false")){
+                                return;
+                            }
+
                             for (String key : config.getConfigurationSection(id + ".effects").getKeys(false)) {
                                 effectList.add(new PotionEffect(
                                         PotionEffectType.getById(tManager.getMapEffects().get(key.toLowerCase())),
@@ -164,6 +178,12 @@ public class TalismanEffectListener implements Listener {
                             .orElse(null);
 
                     if (id != null) {
+
+                        String status = clickedItem.getItemMeta().getPersistentDataContainer().get(NamespacedKey.fromString("talisman_"+id),PersistentDataType.STRING);
+                        if (status.equals("false")){
+                            return;
+                        }
+
                         for (String key : config.getConfigurationSection(id + ".effects").getKeys(false)) {
                             effectList.add(new PotionEffect(PotionEffectType.getById(tManager.getMapEffects().get(key.toLowerCase())), Integer.MAX_VALUE, config.getInt(id + ".effects." + key) - 1, false, false, false));
                         }
@@ -195,6 +215,9 @@ public class TalismanEffectListener implements Listener {
 
         // Дополнительная проверка для обычного перемещения предметов в левую руку (слот 40)
         if (event.getSlot() == 40) { // Слот для левой руки (offhand) всегда индекс 40
+            if (event.getClick() == ClickType.SWAP_OFFHAND){
+                return;
+            }
             if (cursorItem != null && cursorItem.getType() == Material.TOTEM_OF_UNDYING && cursorItem.hasItemMeta()) {
                 boolean isTalisman = cursorItem.getItemMeta().getPersistentDataContainer().getKeys().stream()
                         .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
@@ -208,6 +231,12 @@ public class TalismanEffectListener implements Listener {
                             .orElse(null);
 
                     if (id != null) {
+
+                        String status = cursorItem.getItemMeta().getPersistentDataContainer().get(NamespacedKey.fromString("talisman_"+id),PersistentDataType.STRING);
+                        if (status.equals("false")){
+                            return;
+                        }
+
                         for (String key : config.getConfigurationSection(id + ".effects").getKeys(false)) {
                             effectList.add(new PotionEffect(PotionEffectType.getById(tManager.getMapEffects().get(key.toLowerCase())), Integer.MAX_VALUE, config.getInt(id + ".effects." + key) - 1, false, false, false));
                         }
@@ -230,6 +259,97 @@ public class TalismanEffectListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onUse(EntityResurrectEvent event){
+        if (event.isCancelled()){
+            return;
+        }
+        if (!(event.getEntity() instanceof Player)){
+            return;
+        }
+        Player player = (Player) event.getEntity();
+
+        ItemStack mainHandStack = player.getInventory().getItemInMainHand();
+        ItemStack offHandStack = player.getInventory().getItemInOffHand();
+
+        if (mainHandStack.getType() == Material.TOTEM_OF_UNDYING) {
+            boolean isTalisman = mainHandStack.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                    .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
+
+            String id = isTalisman
+                    ? config.getKeys(false).stream()
+                    .filter(key -> mainHandStack.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                            .anyMatch(nsk -> nsk.toString().contains(key)))
+                    .findFirst()
+                    .orElse(null)
+                    : null;
+
+            if (!isTalisman) {
+                return;
+            }
+            String status = mainHandStack.getItemMeta().getPersistentDataContainer().get(NamespacedKey.fromString("talisman_"+id), PersistentDataType.STRING);
+            if (status.equals("true")){
+                mainHandStack.getItemMeta().getPersistentDataContainer().set(NamespacedKey.fromString("talisman_"+id), PersistentDataType.STRING,"false");
+                ItemMeta meta = mainHandStack.getItemMeta();
+                List<Component> lore = new ArrayList<>();
+                for (String line:config.getStringList(id+".lore")){
+                    if (line.contains("%status%")){
+                        lore.add(ChatUtil.color(line.replace("%status%", Plugin.getInstance().getConfig().getString("Messages.talisman_destroyed"))));
+                        continue;
+                    }
+                    lore.add(ChatUtil.color(line));
+                }
+                meta.lore(lore);
+                if (config.getString(id+".name").contains("%status%")){
+                    meta.displayName(ChatUtil.color(config.getString(id+".name").replace("%status%",Plugin.getInstance().getConfig().getString("Messages.talisman_destroyed"))));
+                }
+                player.getInventory().setItemInMainHand(tManager.getDestroyedTalisman(id));
+            }
+
+        }
+        else if (offHandStack.getType() == Material.TOTEM_OF_UNDYING) {
+            boolean isTalisman = offHandStack.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                    .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
+
+            String id = isTalisman
+                    ? config.getKeys(false).stream()
+                    .filter(key -> offHandStack.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                            .anyMatch(nsk -> nsk.toString().contains(key)))
+                    .findFirst()
+                    .orElse(null)
+                    : null;
+
+            if (!isTalisman) {
+                return;
+            }
+
+            String status = offHandStack.getItemMeta().getPersistentDataContainer().get(NamespacedKey.fromString("talisman_"+id), PersistentDataType.STRING);
+            if (status.equals("true")){
+                offHandStack.getItemMeta().getPersistentDataContainer().set(NamespacedKey.fromString("talisman_"+id), PersistentDataType.STRING,"false");
+                ItemMeta meta = offHandStack.getItemMeta();
+                List<Component> lore = new ArrayList<>();
+                for (String line:config.getStringList(id+".lore")){
+                    if (line.contains("%status%")){
+                        lore.add(ChatUtil.color(line.replace("%status%",Plugin.getInstance().getConfig().getString("Messages.talisman_destroyed"))));
+                        continue;
+                    }
+                    lore.add(ChatUtil.color(line));
+                }
+                meta.lore(lore);
+                if (config.getString(id+".name").contains("%status%")){
+                    meta.displayName(ChatUtil.color(config.getString(id+".name").replace("%status%",Plugin.getInstance().getConfig().getString("Messages.talisman_destroyed"))));
+                }
+                player.getInventory().setItemInOffHand(tManager.getDestroyedTalisman(id));
+
+                if (playerEffects.containsKey(player)) {
+                    for (PotionEffect effect : playerEffects.get(player)) {
+                        player.removePotionEffect(effect.getType());
+                    }
+                    playerEffects.remove(player);
+                }
+            }
+
+        }
+    }
+
 }
-
-

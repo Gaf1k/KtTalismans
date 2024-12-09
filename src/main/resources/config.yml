@@ -1,3 +1,10 @@
+Repair:
+  use: true
+  item_for_repair:
+    material: NETHERITE_SCRAP
+    amount: 15
+  levels: 10
+
 Messages:
   error_command: "&cКоманда введена неверно!"
   not_enough_perm: "&cУ тебя нет прав!"

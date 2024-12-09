@@ -12,10 +12,13 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,16 +32,17 @@ public class TalismanManager {
             ChatUtil.sendConfigMessage(sender,"Messages.talisman_exist");
             return;
         }
-
         talismanCfg.createSection(id);
         talismanCfg.set(id+".name", "&fНазвание");
         talismanCfg.set(id+".lore",List.of("&fОписание"));
         talismanCfg.set(id+".glow",true);
-        talismanCfg.set(id+".effects.Strength",2);
-        talismanCfg.set(id+".effects.Speed",2);
+        talismanCfg.set(id+".itemflags", List.of(ItemFlag.HIDE_ENCHANTS,ItemFlag.HIDE_ATTRIBUTES));
+        talismanCfg.set(id+".effects.STRENGTH",2);
         talismanCfg.set(id+".attributes.1.type", "GENERIC_ATTACK_DAMAGE");
         talismanCfg.set(id+".attributes.1.operation","ADD_NUMBER");
         talismanCfg.set(id+".attributes.1.amount",1.0);
+
+        ConfigManager.instance.configs.put("talismans.yml",talismanCfg);
 
         try {
             talismanCfg.save(new File(Plugin.getInstance().getDataFolder().getAbsolutePath() + "/talismans.yml"));
@@ -52,10 +56,19 @@ public class TalismanManager {
         ItemStack itemStack = new ItemStack(Material.TOTEM_OF_UNDYING);
         ItemMeta meta = itemStack.getItemMeta();
 
-        meta.displayName(ChatUtil.color(talismanCfg.getString(id+".name")));
-
+        String displayName = talismanCfg.getString(id + ".name");
+        if (displayName.contains("%status%")) {
+            meta.displayName(ChatUtil.color(displayName.replace("%status%", Plugin.getInstance().getConfig().getString("Messages.talisman_active"))));
+        }
+        else {
+            meta.displayName(ChatUtil.color(displayName));
+        }
         List<Component> lore = new ArrayList<>();
-        for (String loreText: talismanCfg.getStringList(id+".lore")){
+        for (String loreText : talismanCfg.getStringList(id + ".lore")) {
+            if (loreText.contains("%status%")){
+                lore.add(ChatUtil.color(loreText.replace("%status%", Plugin.getInstance().getConfig().getString("Messages.talisman_active"))));
+                continue;
+            }
             lore.add(ChatUtil.color(loreText));
         }
         meta.lore(lore);
@@ -72,13 +85,54 @@ public class TalismanManager {
                 meta.addAttributeModifier(attribute, new AttributeModifier(UUID.randomUUID(),attribute.toString(),amount,operation,EquipmentSlot.OFF_HAND));
             }
         }
+        for (String flag: talismanCfg.getStringList(id+".itemflags")){
+            meta.addItemFlags(ItemFlag.valueOf(flag));
+        }
 
         meta.getPersistentDataContainer().set(NamespacedKey.fromString("talisman_"+id), PersistentDataType.STRING,"true");
 
         itemStack.setItemMeta(meta);
 
         return itemStack;
+
     }
+
+    public ItemStack getDestroyedTalisman(String id) {
+
+        ItemStack itemStack = new ItemStack(Material.TOTEM_OF_UNDYING);
+        ItemMeta meta = itemStack.getItemMeta();
+
+        String displayName = talismanCfg.getString(id + ".name");
+        if (displayName.contains("%status%")) {
+            meta.displayName(ChatUtil.color(displayName.replace("%status%", Plugin.getInstance().getConfig().getString("Messages.talisman_destroyed"))));
+        }
+        else {
+            meta.displayName(ChatUtil.color(displayName));
+        }
+        List<Component> lore = new ArrayList<>();
+        for (String loreText : talismanCfg.getStringList(id + ".lore")) {
+            if (loreText.contains("%status%")){
+                lore.add(ChatUtil.color(loreText.replace("%status%", Plugin.getInstance().getConfig().getString("Messages.talisman_destroyed"))));
+                continue;
+            }
+            lore.add(ChatUtil.color(loreText));
+        }
+        meta.lore(lore);
+
+        if (talismanCfg.getBoolean(id + ".glow")) {
+            meta.addEnchant(Enchantment.DURABILITY, 1, true);
+        }
+        for (String flag : talismanCfg.getStringList(id + ".itemflags")) {
+            meta.addItemFlags(ItemFlag.valueOf(flag));
+        }
+
+        meta.getPersistentDataContainer().set(NamespacedKey.fromString("talisman_" + id), PersistentDataType.STRING, "false");
+
+        itemStack.setItemMeta(meta);
+
+        return itemStack;
+    }
+
     public Map<String, Integer> getMapEffects(){
         Map<String, Integer> effects = new HashMap<>();
         effects.put("speed", 1);

@@ -12,6 +12,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.checkerframework.checker.units.qual.A;
@@ -41,6 +42,7 @@ public class TalismanCreateMenu {
     private Boolean glow = false;
     private final List<AttributeTalisman> attributeList = new ArrayList<>();
     private final List<PotionEffect> effects = new ArrayList<>();
+    private final List<String> itemFlags = new ArrayList<>();
     private final TalismanManager tManager = new TalismanManager();
 
     public TalismanCreateMenu(Player player, String id) {
@@ -127,6 +129,17 @@ public class TalismanCreateMenu {
                 openEffectsWindow();
             }
         });
+        gui.setItem(5, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                return new ItemBuilder(Material.ORANGE_BANNER).setDisplayName("§fФлаги");
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                openFlagsWindow();
+            }
+        });
 
         gui.setItem(22, new AbstractItem() {
             @Override
@@ -138,13 +151,15 @@ public class TalismanCreateMenu {
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
                 YamlConfiguration talismanCfg = ConfigManager.instance.configs.get("talismans.yml");
                 talismanCfg.set(id+".attributes.1",null);
-                talismanCfg.set(id+".effects",null);
+                talismanCfg.set(id+".effects.STRENGTH",null);
+                talismanCfg.set(id+".itemflags",new ArrayList<>());
                 for (int i = 0;i<lore.size();i++){
                     lore.set(i,lore.get(i).replace("§","&"));
                 }
                 talismanCfg.set(id+".name",name.replace("§","&"));
                 talismanCfg.set(id+".lore",lore);
                 talismanCfg.set(id+".glow",glow);
+                talismanCfg.set(id+".itemflags",itemFlags);
                 for (int i = 0;i<effects.size();i++){
                     String type = null;
 
@@ -156,19 +171,21 @@ public class TalismanCreateMenu {
 
                     talismanCfg.set(id+".effects."+type.toUpperCase(), effects.get(i).getAmplifier());
                 }
+
                 for (int i = 0;i<attributeList.size();i++){
                     talismanCfg.set(id+".attributes."+i+".type", String.valueOf(attributeList.get(i).getType()));
                     talismanCfg.set(id+".attributes."+i+".operation",String.valueOf(attributeList.get(i).getOperation()));
                     talismanCfg.set(id+".attributes."+i+".amount",attributeList.get(i).getAmount());
                 }
 
-
+                ConfigManager.instance.configs.put("talismans.yml",talismanCfg);
 
                 try {
                     talismanCfg.save(new File(Plugin.getInstance().getDataFolder().getAbsolutePath() + "/talismans.yml"));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
+
                 player.closeInventory();
             }
         });
@@ -727,6 +744,77 @@ public class TalismanCreateMenu {
 
         return gui;
     }
+    public void openFlagsWindow(){
+        Window.single().setGui(getFlagsGui()).setViewer(player).build().open();
+    }
+    public Gui getFlagsGui(){
+        Gui gui = Gui.empty(9,2);
+
+        gui.setItem(0, new AbstractItem() {
+            private boolean isActive = false;
+            @Override
+            public ItemProvider getItemProvider() {
+                if (isActive){
+                    return new ItemBuilder(Material.LIME_DYE).setDisplayName("§fHIDE_ATTRIBUTES").addLoreLines("§aВключено");
+                }
+                else {
+                    return new ItemBuilder(Material.RED_DYE).setDisplayName("§fHIDE_ATTRIBUTES").addLoreLines("§cВыключено");
+                }
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                if (isActive){
+                    isActive = false;
+                    itemFlags.remove(String.valueOf(ItemFlag.HIDE_ATTRIBUTES));
+                }
+                else {
+                    isActive = true;
+                    itemFlags.add(String.valueOf(ItemFlag.HIDE_ATTRIBUTES));
+                }
+                notifyWindows();
+            }
+        });
+        gui.setItem(1, new AbstractItem() {
+            private boolean isActive = false;
+            @Override
+            public ItemProvider getItemProvider() {
+                if (isActive){
+                    return new ItemBuilder(Material.LIME_DYE).setDisplayName("§fHIDE_ENCHANTS").addLoreLines("§aВключено");
+                }
+                else {
+                    return new ItemBuilder(Material.RED_DYE).setDisplayName("§fHIDE_ENCHANTS").addLoreLines("§cВыключено");
+                }
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                if (isActive){
+                    isActive = false;
+                    itemFlags.remove(String.valueOf(ItemFlag.HIDE_ENCHANTS));
+                }
+                else {
+                    isActive = true;
+                    itemFlags.add(String.valueOf(ItemFlag.HIDE_ENCHANTS));
+                }
+                notifyWindows();
+            }
+        });
+        gui.setItem(17, new AbstractItem() {
+            @Override
+            public ItemProvider getItemProvider() {
+                return new ItemBuilder(Material.LIME_CONCRETE).setDisplayName("§aСохранить");
+            }
+
+            @Override
+            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+                openMain();
+            }
+        });
+
+        return gui;
+    }
+
 
     public class AttributeTalisman {
         @Getter
