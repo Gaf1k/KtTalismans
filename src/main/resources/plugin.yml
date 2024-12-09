@@ -1,0 +1,4 @@
+name: KtTalismans
+version: '${project.version}'
+main: me.gaf1.kttalismans.KtTalismans
+api-version: '1.16'
