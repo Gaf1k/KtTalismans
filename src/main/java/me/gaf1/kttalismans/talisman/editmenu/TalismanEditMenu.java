@@ -1,10 +1,10 @@
-package me.gaf1.kttalismans.talisman;
+package me.gaf1.kttalismans.talisman.editmenu;
 
 import lombok.Getter;
 import lombok.Setter;
 import me.gaf1.kttalismans.Plugin;
+import me.gaf1.kttalismans.talisman.TalismanManager;
 import me.gaf1.kttalismans.utils.ConfigManager;
-import org.bukkit.Effect;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
@@ -15,7 +15,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.item.ItemProvider;
@@ -29,23 +28,21 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 
-public class TalismanCreateMenu {
+public class TalismanEditMenu {
     Player player;
     String id;
     private String name = "&eТалисман";
     private List<String> lore = new ArrayList<>(List.of("§7Новая строка"));
-    private Boolean glow = false;
     private final List<AttributeTalisman> attributeList = new ArrayList<>();
     private final List<PotionEffect> effects = new ArrayList<>();
     private final List<String> itemFlags = new ArrayList<>();
     private final TalismanManager tManager = new TalismanManager();
 
-    public TalismanCreateMenu(Player player, String id) {
+    public TalismanEditMenu(Player player, String id) {
         this.player = player;
         this.id = id;
     }
@@ -80,34 +77,8 @@ public class TalismanCreateMenu {
                 openLoreMenu();
             }
         });
+
         gui.setItem(2, new AbstractItem() {
-            @Override
-            public ItemProvider getItemProvider() {
-                if (glow){
-                    return new ItemBuilder(Material.ENCHANTED_BOOK)
-                            .setDisplayName("§fСвечение")
-                            .addLoreLines("§aВключено");
-                }
-                else {
-                    return new ItemBuilder(Material.BOOK)
-                            .setDisplayName("§fСвечение")
-                            .addLoreLines("§cВыключено");
-                }
-            }
-
-            @Override
-            public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                if (glow){
-                    glow = false;
-                }
-                else {
-                    glow = true;
-                }
-                notifyWindows();
-            }
-        });
-
-        gui.setItem(3, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
                 return new ItemBuilder(Material.DIAMOND_SWORD).addAllItemFlags().setDisplayName("§fАтрибуты");
@@ -118,7 +89,7 @@ public class TalismanCreateMenu {
                 openAttributeWindow();
             }
         });
-        gui.setItem(4, new AbstractItem() {
+        gui.setItem(3, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
                 return new ItemBuilder(Material.POTION).addAllItemFlags().setDisplayName("§fЭффекты");
@@ -129,7 +100,7 @@ public class TalismanCreateMenu {
                 openEffectsWindow();
             }
         });
-        gui.setItem(5, new AbstractItem() {
+        gui.setItem(4, new AbstractItem() {
             @Override
             public ItemProvider getItemProvider() {
                 return new ItemBuilder(Material.ORANGE_BANNER).setDisplayName("§fФлаги");
@@ -158,7 +129,6 @@ public class TalismanCreateMenu {
                 }
                 talismanCfg.set(id+".name",name.replace("§","&"));
                 talismanCfg.set(id+".lore",lore);
-                talismanCfg.set(id+".glow",glow);
                 talismanCfg.set(id+".itemflags",itemFlags);
                 for (int i = 0;i<effects.size();i++){
                     String type = null;
@@ -424,77 +394,100 @@ public class TalismanCreateMenu {
     public Gui getEditAttributeGui(Integer value){
         Gui gui = Gui.empty(9,2);
         gui.setItem(0, new AbstractItem() {
-            final List<Attribute> list = List.of(Attribute.values());
+            final List<Attribute> attributes = List.of(Attribute.values());
             private int i = 0;
-            private Boolean click = false;
             @Override
             public ItemProvider getItemProvider() {
-                if (click) {
-                    return new ItemBuilder(Material.OAK_SIGN)
-                            .setDisplayName("§fТип атрибута")
-                            .addLoreLines(String.valueOf(list.get(i)));
+
+                Attribute currentType = null;
+                for (Attribute type: attributes){
+                    if (type == attributeList.get(value).getType()){
+                        currentType = type;
+                    }
                 }
-                else {
-                    return new ItemBuilder(Material.OAK_SIGN)
-                            .setDisplayName("§fТип атрибута")
-                            .addLoreLines(String.valueOf(attributeList.get(value).getType()));
-                }
+                i = attributes.indexOf(currentType);
+                List<String> lore = generateLore(i);
+                return new ItemBuilder(Material.OAK_SIGN)
+                        .setDisplayName("§fТип атрибута")
+                        .setLegacyLore(lore);
+            }
+            private List<String> generateLore(int index) {
+                List<String> lore = new ArrayList<>();
+                int count = attributes.size();
+
+                // Расчёт индексов соседних эффектов  (обратите внимание на проверку на пустой список)
+                if (count == 0) return lore; // Предотвращение ошибки при пустом списке
+
+                int prev1Index = (index - 2 + count) % count;
+                int prevIndex = (index - 1 + count) % count;
+                int nextIndex = (index + 1) % count;
+                int next2Index = (index + 2) % count;
+
+                lore.add("§7" + attributes.get(prev1Index));
+                lore.add("§7" + attributes.get(prevIndex));
+                lore.add("§f>" + attributes.get(index));
+                lore.add("§7" + attributes.get(nextIndex));
+                lore.add("§7" + attributes.get(next2Index));
+
+                return lore;
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                click = true;
-                if (clickType == ClickType.RIGHT){
+                if (clickType == ClickType.RIGHT) {
+                    i--;
+                } else if (clickType == ClickType.LEFT) {
                     i++;
                 }
-                else if (clickType == ClickType.LEFT){
-                    i--;
-                }
-                if (i >= list.size()) {
-                    i = 0;
-                } else if (i < 0) {
-                    i = list.size() - 1;
-                }
+                i = Math.floorMod(i, attributes.size());
+                attributeList.get(value).setType(attributes.get(i));
                 notifyWindows();
-                attributeList.get(value).setType(list.get(i));
             }
         });
         gui.setItem(1, new AbstractItem() {
             final List<AttributeModifier.Operation> operations = List.of(AttributeModifier.Operation.values());
             private int i = 0;
-            private Boolean click = false;
 
 
             @Override
             public ItemProvider getItemProvider() {
-                if (click) {
-                    return new ItemBuilder(Material.BIRCH_SIGN)
-                            .setDisplayName("§fТип добавления")
-                            .addLoreLines(String.valueOf(operations.get(i)));
+                AttributeModifier.Operation currentType = null;
+                for (AttributeModifier.Operation type: operations){
+                    if (type == attributeList.get(value).getOperation()){
+                        currentType = type;
+                    }
                 }
-                else {
-                    return new ItemBuilder(Material.BIRCH_SIGN)
-                            .setDisplayName("§fТип добавления")
-                            .addLoreLines(String.valueOf(attributeList.get(value).getOperation()));
-                }
+                i = operations.indexOf(currentType);
+                return new ItemBuilder(Material.BIRCH_SIGN)
+                        .setDisplayName("§fТип добавления")
+                        .setLegacyLore(generateLore(i));
+            }
+            private List<String> generateLore(int index) {
+                List<String> lore = new ArrayList<>();
+                int count = operations.size();
+
+                if (count == 0) return lore;
+
+                int prevIndex = (index - 1 + count) % count;
+                int nextIndex = (index + 1) % count;
+
+                lore.add("§7" + operations.get(prevIndex));
+                lore.add("§f>" + operations.get(index));
+                lore.add("§7" + operations.get(nextIndex));
+
+                return lore;
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                click = true;
-                if (clickType == ClickType.RIGHT){
+                if (clickType == ClickType.RIGHT) {
+                    i--;
+                } else if (clickType == ClickType.LEFT) {
                     i++;
                 }
-                else if (clickType == ClickType.LEFT){
-                    i--;
-                }
-                if (i >= operations.size()) {
-                    i = 0;
-                } else if (i < 0) {
-                    i = operations.size() - 1;
-                }
-                notifyWindows();
+                i = Math.floorMod(i, operations.size());
                 attributeList.get(value).setOperation(operations.get(i));
+                notifyWindows();
             }
         });
         gui.setItem(2, new AbstractItem() {
@@ -523,6 +516,9 @@ public class TalismanCreateMenu {
                 }
                 else if(clickType == ClickType.SHIFT_LEFT){
                     i = i+1;
+                }
+                if (i<0){
+                    i=0.0;
                 }
                 notifyWindows();
                 DecimalFormat df = new DecimalFormat("#.#");
@@ -660,73 +656,87 @@ public class TalismanCreateMenu {
         gui.setItem(0, new AbstractItem() {
             final List<String> effectKeys = new ArrayList<>(tManager.getMapEffects().keySet());
             private int i = 0;
-            private Boolean click = false;
+
             @Override
             public ItemProvider getItemProvider() {
-
-                String type = null;
-
+                String currentType = null;
                 for (Map.Entry<String, Integer> entry : tManager.getMapEffects().entrySet()) {
                     if (entry.getValue().equals(effects.get(value).getType().getId())) {
-                        type = entry.getKey();
+                        currentType = entry.getKey();
+                        break;
                     }
                 }
+                i = effectKeys.indexOf(currentType);
+                List<String> lore = generateLore(i);
+                return new ItemBuilder(Material.POTION)
+                        .setDisplayName("§fЭффект")
+                        .addAllItemFlags()
+                        .setLegacyLore(lore);
+            }
 
-                if (click) {
-                    return new ItemBuilder(Material.POTION).setDisplayName("§fЭффект").addAllItemFlags().addLoreLines(effectKeys.get(i).toUpperCase());
-                }
-                else {
-                    return new ItemBuilder(Material.POTION).setDisplayName("§fЭффект").addAllItemFlags().addLoreLines(type.toUpperCase());
-                }
+            private List<String> generateLore(int index) {
+                List<String> lore = new ArrayList<>();
+                int effectCount = effectKeys.size();
+
+                // Расчёт индексов соседних эффектов  (обратите внимание на проверку на пустой список)
+                if (effectCount == 0) return lore; // Предотвращение ошибки при пустом списке
+
+                int prev1Index = (index - 2 + effectCount) % effectCount;
+                int prevIndex = (index - 1 + effectCount) % effectCount;
+                int nextIndex = (index + 1) % effectCount;
+                int next2Index = (index + 2) % effectCount;
+
+                lore.add("§7" + effectKeys.get(prev1Index).toUpperCase());
+                lore.add("§7" + effectKeys.get(prevIndex).toUpperCase());
+                lore.add("§f>" + effectKeys.get(index).toUpperCase());
+                lore.add("§7" + effectKeys.get(nextIndex).toUpperCase());
+                lore.add("§7" + effectKeys.get(next2Index).toUpperCase());
+
+                return lore;
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-                click = true;
-                if (clickType == ClickType.RIGHT){
+                if (clickType == ClickType.RIGHT) {
+                    i--;
+                } else if (clickType == ClickType.LEFT) {
                     i++;
                 }
-                else if (clickType == ClickType.LEFT){
-                    i--;
-                }
-                if (i >= effectKeys.size()) {
-                    i = 0;
-                }
-                else if (i < 0) {
-                    i = effectKeys.size() - 1;
-                }
+                i = Math.floorMod(i, effectKeys.size());
+
+                // Обновление выбранного эффекта
+                String selectedEffectKey = effectKeys.get(i);
+                PotionEffectType selectedEffectType = PotionEffectType.getById(tManager.getMapEffects().get(selectedEffectKey));
+                effects.set(value, new PotionEffect(selectedEffectType, Integer.MAX_VALUE, effects.get(value).getAmplifier()));
                 notifyWindows();
-                effects.set(value, new PotionEffect(PotionEffectType.getById(tManager.getMapEffects().get(effectKeys.get(i))),Integer.MAX_VALUE,effects.get(value).getDuration()));
             }
         });
 
         gui.setItem(1, new AbstractItem() {
-            private int i = 0;
-            private Boolean click = false;
+            private int i = 1;
+            private boolean click = false;
+
             @Override
             public ItemProvider getItemProvider() {
-                if (click) {
-                    return new ItemBuilder(Material.POTION).setDisplayName("§fЗначение").addAllItemFlags().addLoreLines(String.valueOf(i));
-                }
-                else {
-                    return new ItemBuilder(Material.POTION).setDisplayName("§fЗначение").addAllItemFlags().addLoreLines(String.valueOf(effects.get(value).getAmplifier()));
-                }
+                return new ItemBuilder(Material.POTION)
+                        .setDisplayName("§fЗначение")
+                        .addAllItemFlags()
+                        .addLoreLines(click ? String.valueOf(i) : String.valueOf(effects.get(value).getAmplifier()));
             }
 
             @Override
             public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
                 click = true;
-                if (clickType == ClickType.LEFT){
+                if (clickType == ClickType.LEFT) {
                     i++;
-                }
-                if (clickType == ClickType.RIGHT){
+                } else if (clickType == ClickType.RIGHT) {
                     i--;
                 }
-                if (i <= 0){
-                    i=1;
+                if (i <= 0) {
+                    i = 1;
                 }
+                effects.set(value, new PotionEffect(effects.get(value).getType(), Integer.MAX_VALUE, i));
                 notifyWindows();
-                effects.set(value, new PotionEffect(effects.get(value).getType(),Integer.MAX_VALUE,i));
             }
         });
 
@@ -751,9 +761,11 @@ public class TalismanCreateMenu {
         Gui gui = Gui.empty(9,2);
 
         gui.setItem(0, new AbstractItem() {
-            private boolean isActive = false;
+            private boolean isActive;
             @Override
             public ItemProvider getItemProvider() {
+                isActive = itemFlags.contains(ItemFlag.HIDE_ATTRIBUTES);
+
                 if (isActive){
                     return new ItemBuilder(Material.LIME_DYE).setDisplayName("§fHIDE_ATTRIBUTES").addLoreLines("§aВключено");
                 }
@@ -776,9 +788,10 @@ public class TalismanCreateMenu {
             }
         });
         gui.setItem(1, new AbstractItem() {
-            private boolean isActive = false;
+            private boolean isActive;
             @Override
             public ItemProvider getItemProvider() {
+                isActive = itemFlags.contains(ItemFlag.HIDE_ENCHANTS);
                 if (isActive){
                     return new ItemBuilder(Material.LIME_DYE).setDisplayName("§fHIDE_ENCHANTS").addLoreLines("§aВключено");
                 }

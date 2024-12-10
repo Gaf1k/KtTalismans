@@ -1,6 +1,7 @@
 package me.gaf1.kttalismans.talisman;
 
 import me.gaf1.kttalismans.Plugin;
+import me.gaf1.kttalismans.talisman.editmenu.TalismanEditMenu;
 import me.gaf1.kttalismans.utils.ChatUtil;
 import me.gaf1.kttalismans.utils.ConfigManager;
 import org.bukkit.Bukkit;
@@ -16,6 +17,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TalismanCommand implements TabExecutor {
     private final TalismanManager tManager = new TalismanManager();
@@ -43,27 +46,46 @@ public class TalismanCommand implements TabExecutor {
                 }
                 if (sender instanceof Player){
                     Player player = (Player) sender;
-                    new TalismanCreateMenu(player, args[1]).openMain();
+                    new TalismanEditMenu(player, args[1]).openMain();
                 }
 
                 tManager.createTalisman(args[1],sender);
                 return true;
             case "give":
                 if (args.length == 1) {
-                    ChatUtil.sendMessage(sender,"&f/talisman give <id>");
+                    ChatUtil.sendMessage(sender,"&f/talisman give <id> <player>");
                     return true;
                 }
-                if (!talismanCfg.getKeys(false).contains(args[1])){
-                    ChatUtil.sendConfigMessage(sender,"Messages.talisman_not_exist");
+                else if (args.length == 2) {
+                    if (!talismanCfg.getKeys(false).contains(args[1])) {
+                        ChatUtil.sendConfigMessage(sender, "Messages.talisman_not_exist");
+                        return true;
+                    }
+                    if (!(sender instanceof Player)) {
+                        Bukkit.getLogger().info("&cТы консоль! Тебе нельзя!");
+                        return true;
+                    }
+                    Player player = (Player) sender;
+                    player.getInventory().addItem(tManager.getTalisman(args[1]));
                     return true;
                 }
-                if (!(sender instanceof Player)){
-                    Bukkit.getLogger().info("&cТы консоль! Тебе нельзя!");
+                else if (args.length == 3){
+                    if (!talismanCfg.getKeys(false).contains(args[1])) {
+                        ChatUtil.sendConfigMessage(sender, "Messages.talisman_not_exist");
+                        return true;
+                    }
+                    Player player = Bukkit.getPlayer(args[2]);
+                    if (player == null){
+                        ChatUtil.sendConfigMessage(sender, "Messages.player_not_exist");
+                        return true;
+                    }
+                    ChatUtil.sendConfigMessage(player,"Messages.talisman_received",
+                            Map.of("%talisman_name%",talismanCfg.getString(args[1]+".name")));
+                    ChatUtil.sendConfigMessage(sender, "Messages.talisman_gived",
+                            Map.of("%talisman_name%",talismanCfg.getString(args[1]+".name"),"%player%",player.getName()));
+                    player.getInventory().addItem(tManager.getTalisman(args[1]));
                     return true;
                 }
-                Player player = (Player) sender;
-                player.getInventory().addItem(tManager.getTalisman(args[1]));
-                return true;
             case "remove":
                 if (args.length == 1) {
                     ChatUtil.sendMessage(sender,"&f/talisman remove <id>");
@@ -107,7 +129,9 @@ public class TalismanCommand implements TabExecutor {
             for (String key: talismanCfg.getKeys(false)){
                 list.add(key);
             }
-            return list;
+            return list.stream()
+                    .filter(sound -> sound.contains(args[1])) // Проверяем наличие подстроки
+                    .collect(Collectors.toList());
         }
 
 

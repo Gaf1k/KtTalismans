@@ -31,6 +31,15 @@ public class ChatUtil {
 
         sendMessage(recipient, message);
     }
+    public static void sendConfigMessage(CommandSender recipient, String configPath, Map<String, String> args) {
+        String message = Plugin.getInstance().getConfig().getString(configPath);
+
+        for (String key : args.keySet()) {
+            message = message.replace(key, args.get(key));
+        }
+
+        sendMessage(recipient, message);
+    }
 
     public static Component color(String value) {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(value).decoration(TextDecoration.ITALIC, false);

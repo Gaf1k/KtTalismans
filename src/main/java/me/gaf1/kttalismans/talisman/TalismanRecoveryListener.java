@@ -62,5 +62,4 @@ public class TalismanRecoveryListener implements Listener {
         anvil.setResult(tManager.getTalisman(id));
         event.setResult(tManager.getTalisman(id));
     }
-
 }

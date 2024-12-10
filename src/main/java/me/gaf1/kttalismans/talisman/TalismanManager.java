@@ -35,8 +35,7 @@ public class TalismanManager {
         talismanCfg.createSection(id);
         talismanCfg.set(id+".name", "&fНазвание");
         talismanCfg.set(id+".lore",List.of("&fОписание"));
-        talismanCfg.set(id+".glow",true);
-        talismanCfg.set(id+".itemflags", List.of(ItemFlag.HIDE_ENCHANTS,ItemFlag.HIDE_ATTRIBUTES));
+        talismanCfg.set(id+".itemflags", List.of("HIDE_ENCHANTS","HIDE_ATTRIBUTES"));
         talismanCfg.set(id+".effects.STRENGTH",2);
         talismanCfg.set(id+".attributes.1.type", "GENERIC_ATTACK_DAMAGE");
         talismanCfg.set(id+".attributes.1.operation","ADD_NUMBER");
@@ -73,9 +72,8 @@ public class TalismanManager {
         }
         meta.lore(lore);
 
-        if (talismanCfg.getBoolean(id+".glow")){
-            meta.addEnchant(Enchantment.DURABILITY,1,true);
-        }
+        meta.addEnchant(Enchantment.DURABILITY,1,true);
+
         ConfigurationSection attributes = talismanCfg.getConfigurationSection(id+".attributes");
         if (!attributes.getKeys(false).isEmpty()) {
             for (String key : attributes.getKeys(false)) {
@@ -119,9 +117,6 @@ public class TalismanManager {
         }
         meta.lore(lore);
 
-        if (talismanCfg.getBoolean(id + ".glow")) {
-            meta.addEnchant(Enchantment.DURABILITY, 1, true);
-        }
         for (String flag : talismanCfg.getStringList(id + ".itemflags")) {
             meta.addItemFlags(ItemFlag.valueOf(flag));
         }
