@@ -34,12 +34,10 @@ public class TalismanManager {
         }
         talismanCfg.createSection(id);
         talismanCfg.set(id+".name", "&fНазвание");
-        talismanCfg.set(id+".lore",List.of("&fОписание"));
-        talismanCfg.set(id+".itemflags", List.of("HIDE_ENCHANTS","HIDE_ATTRIBUTES"));
-        talismanCfg.set(id+".effects.STRENGTH",2);
-        talismanCfg.set(id+".attributes.1.type", "GENERIC_ATTACK_DAMAGE");
-        talismanCfg.set(id+".attributes.1.operation","ADD_NUMBER");
-        talismanCfg.set(id+".attributes.1.amount",1.0);
+        talismanCfg.set(id+".lore",List.of());
+        talismanCfg.set(id+".itemflags", List.of());
+        talismanCfg.createSection(id+".effects");
+        talismanCfg.createSection(id+".attributes");
 
         ConfigManager.instance.configs.put("talismans.yml",talismanCfg);
 

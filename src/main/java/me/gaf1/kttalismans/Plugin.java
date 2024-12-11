@@ -4,6 +4,7 @@ import lombok.Getter;
 import me.gaf1.kttalismans.talisman.TalismanCommand;
 import me.gaf1.kttalismans.talisman.TalismanEffectListener;
 import me.gaf1.kttalismans.talisman.TalismanRecoveryListener;
+import me.gaf1.kttalismans.talisman.editmenu.TalismanMainEdit;
 import me.gaf1.kttalismans.utils.ConfigManager;
 import org.bukkit.plugin.java.JavaPlugin;
 

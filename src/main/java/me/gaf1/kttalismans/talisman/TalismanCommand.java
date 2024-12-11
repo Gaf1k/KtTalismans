@@ -1,7 +1,7 @@
 package me.gaf1.kttalismans.talisman;
 
 import me.gaf1.kttalismans.Plugin;
-import me.gaf1.kttalismans.talisman.editmenu.TalismanEditMenu;
+import me.gaf1.kttalismans.talisman.editmenu.TalismanMainEdit;
 import me.gaf1.kttalismans.utils.ChatUtil;
 import me.gaf1.kttalismans.utils.ConfigManager;
 import org.bukkit.Bukkit;
@@ -46,10 +46,29 @@ public class TalismanCommand implements TabExecutor {
                 }
                 if (sender instanceof Player){
                     Player player = (Player) sender;
-                    new TalismanEditMenu(player, args[1]).openMain();
+                    tManager.createTalisman(args[1],sender);
+                    new TalismanMainEdit(player,args[1]).getMainWindow().open();
+                    return true;
                 }
-
-                tManager.createTalisman(args[1],sender);
+                else {
+                    tManager.createTalisman(args[1], sender);
+                    return true;
+                }
+            case "edit":
+                if (args.length == 1) {
+                    ChatUtil.sendMessage(sender,"&f/talisman edit <id>");
+                    return true;
+                }
+                if (!talismanCfg.getKeys(false).contains(args[1])) {
+                    ChatUtil.sendConfigMessage(sender, "Messages.talisman_not_exist");
+                    return true;
+                }
+                if (!(sender instanceof Player)){
+                    Bukkit.getLogger().info("Ты консоль, тебе нельзя!");
+                    return true;
+                }
+                Player player2 = (Player) sender;
+                new TalismanMainEdit(player2,args[1]).getMainWindow().open();
                 return true;
             case "give":
                 if (args.length == 1) {
@@ -74,16 +93,16 @@ public class TalismanCommand implements TabExecutor {
                         ChatUtil.sendConfigMessage(sender, "Messages.talisman_not_exist");
                         return true;
                     }
-                    Player player = Bukkit.getPlayer(args[2]);
-                    if (player == null){
+                    Player player1 = Bukkit.getPlayer(args[2]);
+                    if (player1 == null){
                         ChatUtil.sendConfigMessage(sender, "Messages.player_not_exist");
                         return true;
                     }
-                    ChatUtil.sendConfigMessage(player,"Messages.talisman_received",
+                    ChatUtil.sendConfigMessage(player1,"Messages.talisman_received",
                             Map.of("%talisman_name%",talismanCfg.getString(args[1]+".name")));
                     ChatUtil.sendConfigMessage(sender, "Messages.talisman_gived",
-                            Map.of("%talisman_name%",talismanCfg.getString(args[1]+".name"),"%player%",player.getName()));
-                    player.getInventory().addItem(tManager.getTalisman(args[1]));
+                            Map.of("%talisman_name%",talismanCfg.getString(args[1]+".name"),"%player%",player1.getName()));
+                    player1.getInventory().addItem(tManager.getTalisman(args[1]));
                     return true;
                 }
             case "remove":
@@ -120,11 +139,10 @@ public class TalismanCommand implements TabExecutor {
         if (!sender.hasPermission("kttalisman.admin")) {
             return null;
         }
-
         if (args.length == 1){
-            return List.of("give", "create","remove");
+            return List.of("give","create","remove","reload","edit");
         }
-        else if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("remove"))){
+        else if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("remove") || args[0].equalsIgnoreCase("edit"))){
             List<String> list = new ArrayList<>();
             for (String key: talismanCfg.getKeys(false)){
                 list.add(key);
@@ -132,9 +150,9 @@ public class TalismanCommand implements TabExecutor {
             return list.stream()
                     .filter(sound -> sound.contains(args[1])) // Проверяем наличие подстроки
                     .collect(Collectors.toList());
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("create")) {
+            return null;
         }
-
-
         return null;
     }
 }
