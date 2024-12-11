@@ -4,8 +4,8 @@ import lombok.Getter;
 import me.gaf1.kttalismans.talisman.TalismanCommand;
 import me.gaf1.kttalismans.talisman.TalismanEffectListener;
 import me.gaf1.kttalismans.talisman.TalismanRecoveryListener;
-import me.gaf1.kttalismans.talisman.editmenu.TalismanMainEdit;
 import me.gaf1.kttalismans.utils.ConfigManager;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Plugin extends JavaPlugin {
@@ -20,6 +20,7 @@ public final class Plugin extends JavaPlugin {
         getCommand("talisman").setTabCompleter(new TalismanCommand());
         getServer().getPluginManager().registerEvents(new TalismanEffectListener(),this);
         getServer().getPluginManager().registerEvents(new TalismanRecoveryListener(), this);
+        new Metrics(this,24120);
     }
 
     @Override

@@ -1,3 +1,11 @@
+#
+# Плагин создан Gaf1
+#
+# Исходный код: https://github.com/Gaf1k/KtTalismans
+# Discord: gaf1
+#
+# Пишите если нашли баги/ошибки
+#
 Repair:
   use: true
   item_for_repair:
