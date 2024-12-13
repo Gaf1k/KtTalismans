@@ -172,7 +172,6 @@ public class TalismanMainEdit {
 
                     talismanCfg.set(id+".effects."+type.toUpperCase(), effects.get(i).getAmplifier());
                 }
-                System.out.println(attributeList);
                 for (int i = 0;i<attributeList.size();i++){
                     talismanCfg.set(id+".attributes."+i+".type", String.valueOf(attributeList.get(i).getType()));
                     talismanCfg.set(id+".attributes."+i+".operation",String.valueOf(attributeList.get(i).getOperation()));
