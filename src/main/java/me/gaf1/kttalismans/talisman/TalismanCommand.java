@@ -46,12 +46,12 @@ public class TalismanCommand implements TabExecutor {
                 }
                 if (sender instanceof Player){
                     Player player = (Player) sender;
-                    tManager.createTalisman(args[1],sender);
-                    new TalismanMainEdit(player,args[1]).getMainWindow().open();
+                    tManager.createTalisman(args[1].toLowerCase(),sender);
+                    new TalismanMainEdit(player,args[1].toLowerCase()).getMainWindow().open();
                     return true;
                 }
                 else {
-                    tManager.createTalisman(args[1], sender);
+                    tManager.createTalisman(args[1].toLowerCase(), sender);
                     return true;
                 }
             case "edit":
