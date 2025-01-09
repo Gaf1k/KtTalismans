@@ -117,7 +117,7 @@ public class TalismanEffectListener implements Listener {
         Player player = (Player) event.getWhoClicked();
         ItemStack clickedItem = event.getCurrentItem(); // Это предмет, на который кликнул игрок
         ItemStack cursorItem = event.getCursor(); // Это предмет, который игрок пытается переместить
-        ItemStack offHandItem = player.getInventory().getItemInOffHand();
+        ItemStack offHandItem = player.getInventory().getItem(40);
 
         if (event.getClick() == ClickType.NUMBER_KEY) {
             int hotbarSlot = event.getHotbarButton(); // Индекс хотбара (0-8)
@@ -130,6 +130,21 @@ public class TalismanEffectListener implements Listener {
                             .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
 
                     if (isTalisman) {
+
+                        if (offHandItem != null && offHandItem.getType() == Material.TOTEM_OF_UNDYING && offHandItem.hasItemMeta()) {
+                            boolean wasTalisman = offHandItem.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                                    .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
+
+                            if (wasTalisman) {
+                                if (playerEffects.containsKey(player)) {
+                                    for (PotionEffect effect : playerEffects.get(player)) {
+                                        player.removePotionEffect(effect.getType());
+                                    }
+                                    playerEffects.remove(player);
+                                }
+                            }
+                        }
+
                         List<PotionEffect> effectList = new ArrayList<>();
                         String id = config.getKeys(false).stream()
                                 .filter(key -> hotbarItem.getItemMeta().getPersistentDataContainer().getKeys().stream()
@@ -178,7 +193,6 @@ public class TalismanEffectListener implements Listener {
                     }
                 }
             }
-            return;
         }
 
         if (event.getClick() == ClickType.SWAP_OFFHAND) {
@@ -189,6 +203,22 @@ public class TalismanEffectListener implements Listener {
                         .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
 
                 if (isTalisman) {
+
+                    if (offHandItem != null && offHandItem.getType() == Material.TOTEM_OF_UNDYING && offHandItem.hasItemMeta()) {
+                        boolean wasTalisman = offHandItem.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                                .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
+
+                        if (wasTalisman) {
+                            // Убираем эффекты, если амулет был убран из левой руки
+                            if (playerEffects.containsKey(player)) {
+                                for (PotionEffect effect : playerEffects.get(player)) {
+                                    player.removePotionEffect(effect.getType());
+                                }
+                                playerEffects.remove(player);
+                            }
+                        }
+                    }
+
                     // Применяем эффекты, если в левой руке оказался амулет
                     List<PotionEffect> effectList = new ArrayList<>();
                     String id = config.getKeys(false).stream()
@@ -243,6 +273,22 @@ public class TalismanEffectListener implements Listener {
                         .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
 
                 if (isTalisman) {
+
+                    if (offHandItem != null && offHandItem.getType() == Material.TOTEM_OF_UNDYING && offHandItem.hasItemMeta()) {
+                        boolean wasTalisman = offHandItem.getItemMeta().getPersistentDataContainer().getKeys().stream()
+                                .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
+
+                        if (wasTalisman) {
+                            // Убираем эффекты, если амулет был убран из левой руки
+                            if (playerEffects.containsKey(player)) {
+                                for (PotionEffect effect : playerEffects.get(player)) {
+                                    player.removePotionEffect(effect.getType());
+                                }
+                                playerEffects.remove(player);
+                            }
+                        }
+                    }
+
                     List<PotionEffect> effectList = new ArrayList<>();
                     String id = config.getKeys(false).stream()
                             .filter(key -> cursorItem.getItemMeta().getPersistentDataContainer().getKeys().stream()
