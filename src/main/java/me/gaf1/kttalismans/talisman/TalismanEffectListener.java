@@ -61,6 +61,26 @@ public class TalismanEffectListener implements Listener {
                 return;
             }
 
+            if (event.getMainHandItem().getType() == Material.TOTEM_OF_UNDYING) {
+                if (!event.getMainHandItem().hasItemMeta()) {
+                    return;
+                }
+
+                boolean isTalismanMainHand = event.getMainHandItem().getItemMeta().getPersistentDataContainer().getKeys().stream()
+                        .anyMatch(nsk -> config.getKeys(false).stream().anyMatch(nsk.toString()::contains));
+
+                if (!isTalismanMainHand) {
+                    return;
+                }
+
+                if (playerEffects.containsKey(player)) {
+                    for (PotionEffect effect : playerEffects.get(player)) {
+                        player.removePotionEffect(effect.getType());
+                    }
+                    playerEffects.remove(player);
+                }
+            }
+
             for (String key: config.getConfigurationSection(id + ".effects").getKeys(false)) {
                 effectList.add(new PotionEffect(PotionEffectType.getById(tManager.getMapEffects().get(key.toLowerCase())), Integer.MAX_VALUE, config.getInt(id + ".effects." + key) - 1, false, false, false));
             }
